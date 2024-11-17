@@ -135,22 +135,6 @@ class FastOps(TensorOps):
 def tensor_map(
     fn: Callable[[float], float]
 ) -> Callable[[Storage, Shape, Strides, Storage, Shape, Strides], None]:
-    """
-    NUMBA low_level tensor_map function. See `tensor_ops.py` for description.
-
-    Optimizations:
-
-    * Main loop in parallel
-    * All indices use numpy buffers
-    * When `out` and `in` are stride-aligned, avoid indexing
-
-    Args:
-        fn: function mappings floats-to-floats to apply.
-
-    Returns:
-        Tensor map function.
-    """
-
     def _map(
         out: Storage,
         out_shape: Shape,
@@ -159,7 +143,6 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 3.1
         if list(in_shape) == list(out_shape) and list(in_strides) == list(out_strides):
             for i in prange(len(out)):
                 out[i] = fn(in_storage[i])
@@ -170,12 +153,10 @@ def tensor_map(
                 to_index(i, out_shape, out_index)
                 broadcast_index(out_index, out_shape, in_shape, in_index)
                 data = in_storage[index_to_position(in_index, in_strides)]
-                map_data = fn(data)
-                out[index_to_position(out_index, out_strides)] = map_data
+                out[index_to_position(out_index, out_strides)] = fn(data)
 
-        # raise NotImplementedError("Need to implement for Task 3.1")
+    return njit(parallel=True)(_map)
 
-    return njit(parallel=True)(_map)  # type: ignore
 
 
 def tensor_zip(
