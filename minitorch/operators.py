@@ -2,6 +2,8 @@
 
 import math
 from typing import Callable, Iterable
+import numpy as np  # Add this line to import NumPy
+
 
 
 # Mathematical functions:
@@ -52,8 +54,7 @@ def sigmoid(x: float) -> float:
 
 def relu(x: float) -> float:
     """Applies the ReLU activation function."""
-    return max(0, x)
-
+    return np.maximum(0, x)
 
 def log(x: float) -> float:
     """Calculates the natural logarithm."""

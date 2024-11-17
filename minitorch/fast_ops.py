@@ -218,22 +218,6 @@ def tensor_zip(
 def tensor_reduce(
     fn: Callable[[float, float], float]
 ) -> Callable[[Storage, Shape, Strides, Storage, Shape, Strides, int], None]:
-    """
-    NUMBA higher-order tensor reduce function. See `tensor_ops.py` for description.
-
-    Optimizations:
-
-    * Main loop in parallel
-    * All indices use numpy buffers
-    * Inner-loop should not call any functions or write non-local variables
-
-    Args:
-        fn: reduction function mapping two floats to float.
-
-    Returns:
-        Tensor reduce function
-    """
-
     def _reduce(
         out: Storage,
         out_shape: Shape,
@@ -243,22 +227,19 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # TODO: Implement for Task 3.1.
         reduce_size = a_shape[reduce_dim]
         for i in prange(len(out)):
             out_index = np.zeros(MAX_DIMS, np.int32)
             to_index(i, out_shape, out_index)
-            o = index_to_position(out_index, out_strides)
-            out_index[reduce_dim] = 0
-            a = index_to_position(out_index, a_strides)
-            reduce_original = a_strides[reduce_dim]
-            temp = out[o]
-            for s in range(reduce_size):
-                temp = fn(temp, a_storage[a + s * reduce_original])
-            out[o] = temp
+            o_pos = index_to_position(out_index, out_strides)
+            acc = out[o_pos]
+            for j in range(reduce_size):
+                out_index[reduce_dim] = j
+                a_pos = index_to_position(out_index, a_strides)
+                acc = fn(acc, a_storage[a_pos])
+            out[o_pos] = acc
 
-    return njit(parallel=True)(_reduce)  # type: ignore
-    # raise NotImplementedError("Need to implement for Task 3.1")
+    return njit(parallel=True)(_reduce)
 
 
 def _tensor_matrix_multiply(
