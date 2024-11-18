@@ -30,10 +30,28 @@ Fn = TypeVar("Fn")
 
 
 def device_jit(fn: Fn, **kwargs) -> Fn:
+    """
+    Wraps a function with `numba.cuda.jit` for device-level compilation.
+
+    Args:
+        fn (Callable): The function to compile.
+
+    Returns:
+        Callable: The compiled device function.
+    """
     return _jit(device=True, **kwargs)(fn)  # type: ignore
 
 
 def jit(fn, **kwargs) -> FakeCUDAKernel:
+    """
+    Wraps a function with `numba.cuda.jit` for kernel-level compilation.
+
+    Args:
+        fn (Callable): The function to compile.
+
+    Returns:
+        Callable: The compiled kernel function.
+    """
     return _jit(**kwargs)(fn)  # type: ignore
 
 
@@ -45,6 +63,19 @@ THREADS_PER_BLOCK = 32
 
 
 def tensor_map(fn):
+    """
+    CUDA higher-order tensor map function.
+
+    Maps a function to each element of an input tensor and stores the result
+    in an output tensor.
+
+    Args:
+        fn (Callable[[float], float]): The function to map.
+
+    Returns:
+        Callable: The CUDA kernel for mapping.
+    """
+
     def _map(out, out_shape, out_strides, out_size, in_storage, in_shape, in_strides):
         i = numba.cuda.blockIdx.x * THREADS_PER_BLOCK + numba.cuda.threadIdx.x
         if i < out_size:
@@ -60,6 +91,19 @@ def tensor_map(fn):
 
 
 def tensor_zip(fn):
+    """
+    CUDA higher-order tensor zip function.
+
+    Applies a binary function to pairs of elements from two input tensors
+    and stores the result in an output tensor.
+
+    Args:
+        fn (Callable[[float, float], float]): The binary function to apply.
+
+    Returns:
+        Callable: The CUDA kernel for zipping.
+    """
+
     def _zip(
         out,
         out_shape,
@@ -89,6 +133,19 @@ def tensor_zip(fn):
 
 
 def tensor_reduce(fn):
+    """
+    CUDA higher-order tensor reduce function.
+
+    Reduces a tensor along a specified dimension using a binary reduction
+    function.
+
+    Args:
+        fn (Callable[[float, float], float]): The binary reduction function.
+
+    Returns:
+        Callable: The CUDA kernel for reduction.
+    """
+
     def _reduce(
         out,
         out_shape,
@@ -132,6 +189,15 @@ def tensor_reduce(fn):
 
 
 def map(fn):
+    """
+    Creates a higher-order map function for tensors.
+
+    Args:
+        fn (Callable[[float], float]): The unary function to map.
+
+    Returns:
+        Callable: A function that applies the map to tensors.
+    """
     f = tensor_map(cuda.jit(device=True)(fn))
 
     def ret(a, out=None):
@@ -146,6 +212,15 @@ def map(fn):
 
 
 def zip(fn):
+    """
+    Creates a higher-order zip function for tensors.
+
+    Args:
+        fn (Callable[[float, float], float]): The binary function to zip.
+
+    Returns:
+        Callable: A function that applies the zip to tensors.
+    """
     f = tensor_zip(cuda.jit(device=True)(fn))
 
     def ret(a, b):
@@ -162,6 +237,16 @@ def zip(fn):
 
 
 def reduce(fn, start=0.0):
+    """
+    Creates a higher-order reduce function for tensors.
+
+    Args:
+        fn (Callable[[float, float], float]): The binary reduction function.
+        start (float): The initial value for reduction.
+
+    Returns:
+        Callable: A function that reduces tensors.
+    """
     f = tensor_reduce(cuda.jit(device=True)(fn))
 
     def ret(a, dim):
@@ -181,6 +266,14 @@ def reduce(fn, start=0.0):
 
 
 def _sum_practice(out, a, size):
+    """
+    Practice implementation for sum reduction using shared memory.
+
+    Args:
+        out (array): Output tensor for partial sums.
+        a (array): Input tensor to reduce.
+        size (int): Size of the input tensor.
+    """
     BLOCK_DIM = 32
     shared = numba.cuda.shared.array(BLOCK_DIM, numba.float64)
     i = cuda.blockIdx.x * THREADS_PER_BLOCK + cuda.threadIdx.x
@@ -208,6 +301,15 @@ jit_sum_practice = cuda.jit()(_sum_practice)
 
 
 def sum_practice(a):
+    """
+    Wrapper function for practicing sum reduction.
+
+    Args:
+        a (Tensor): Input tensor to reduce.
+
+    Returns:
+        Tensor: Partially reduced tensor.
+    """
     size = a.shape[0]
     threadsperblock = THREADS_PER_BLOCK
     blockspergrid = (size + THREADS_PER_BLOCK - 1) // THREADS_PER_BLOCK
@@ -223,6 +325,21 @@ def sum_practice(a):
 def tensor_matrix_multiply(
     out, out_shape, out_strides, out_size, a_storage, a_shape, a_strides, b_storage, b_shape, b_strides
 ):
+    """
+    CUDA implementation of tensor matrix multiplication.
+
+    Args:
+        out (array): Output tensor storage.
+        out_shape (array): Shape of the output tensor.
+        out_strides (array): Strides of the output tensor.
+        out_size (int): Size of the output tensor.
+        a_storage (array): Storage for tensor A.
+        a_shape (array): Shape of tensor A.
+        a_strides (array): Strides of tensor A.
+        b_storage (array): Storage for tensor B.
+        b_shape (array): Shape of tensor B.
+        b_strides (array): Strides of tensor B.
+    """
     BLOCK_DIM = 32
     shared_a = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
     shared_b = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
@@ -251,34 +368,76 @@ def tensor_matrix_multiply(
 
 
 class CudaOps(TensorOps):
+    """
+    Class for implementing CUDA operations on tensors.
+    """
+
     cuda = True
 
     @staticmethod
     def map(fn: Callable[[float], float]) -> MapProto:
+        """
+        Applies a unary function to each element of a tensor.
+
+        Args:
+            fn (Callable[[float], float]): The function to apply.
+
+        Returns:
+            Callable: A function that applies the map operation.
+        """
         return map(device_jit(fn))
 
     @staticmethod
     def zip(fn: Callable[[float, float], float]) -> Callable[[Tensor, Tensor], Tensor]:
+        """
+        Applies a binary function to pairs of elements from two tensors.
+
+        Args:
+            fn (Callable[[float, float], float]): The binary function to apply.
+
+        Returns:
+            Callable: A function that applies the zip operation.
+        """
         return zip(device_jit(fn))
 
     @staticmethod
     def reduce(fn: Callable[[float, float], float], start=0.0) -> Callable[[Tensor, int], Tensor]:
+        """
+        Reduces a tensor along a specified dimension.
+
+        Args:
+            fn (Callable[[float, float], float]): The reduction function to apply.
+            start (float): The initial value for the reduction.
+
+        Returns:
+            Callable: A function that performs the reduction.
+        """
         return reduce(device_jit(fn), start)
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
+        """
+        Multiplies two matrices or tensors.
+
+        Args:
+            a (Tensor): The first tensor.
+            b (Tensor): The second tensor.
+
+        Returns:
+            Tensor: The resulting tensor after multiplication.
+        """
         blocks = (a.shape[0], b.shape[1], 1)
         threads = (THREADS_PER_BLOCK, THREADS_PER_BLOCK, 1)
         out = Tensor.zeros((a.shape[0], b.shape[1]))
         tensor_matrix_multiply[blocks, threads](
-            out._tensor._storage,
+            out._storage,
             out.shape,
             out.strides,
             out.size,
-            a._tensor._storage,
+            a._storage,
             a.shape,
             a.strides,
-            b._tensor._storage,
+            b._storage,
             b.shape,
             b.strides,
         )

@@ -22,20 +22,28 @@ if TYPE_CHECKING:
 
 # TIP: Use `NUMBA_DISABLE_JIT=1 pytest tests/ -m task3_1` to run these tests without JIT.
 
-# This code will JIT compile fast versions your tensor_data functions.
-# If you get an error, read the docs for NUMBA as to what is allowed
-# in these functions.
+# JIT-compiles optimized versions of tensor data functions
 to_index = njit(inline="always")(to_index)
 index_to_position = njit(inline="always")(index_to_position)
 broadcast_index = njit(inline="always")(broadcast_index)
 
 
 class FastOps(TensorOps):
+    """
+    Provides optimized operations on tensors using NUMBA for JIT compilation.
+    """
+
     @staticmethod
     def map(fn: Callable[[float], float]) -> MapProto:
-        "See `tensor_ops.py`"
+        """
+        Applies a function element-wise to a tensor.
 
-        # This line JIT compiles your tensor_map
+        Args:
+            fn (Callable[[float], float]): The function to apply to each element.
+
+        Returns:
+            MapProto: A callable that applies the function to a tensor.
+        """
         f = tensor_map(njit()(fn))
 
         def ret(a: Tensor, out: Optional[Tensor] = None) -> Tensor:
@@ -48,8 +56,15 @@ class FastOps(TensorOps):
 
     @staticmethod
     def zip(fn: Callable[[float, float], float]) -> Callable[[Tensor, Tensor], Tensor]:
-        "See `tensor_ops.py`"
+        """
+        Applies a binary function element-wise to two tensors.
 
+        Args:
+            fn (Callable[[float, float], float]): The binary function to apply.
+
+        Returns:
+            Callable: A callable that applies the function to two tensors.
+        """
         f = tensor_zip(njit()(fn))
 
         def ret(a: Tensor, b: Tensor) -> Tensor:
@@ -64,17 +79,23 @@ class FastOps(TensorOps):
     def reduce(
         fn: Callable[[float, float], float], start: float = 0.0
     ) -> Callable[[Tensor, int], Tensor]:
-        "See `tensor_ops.py`"
+        """
+        Reduces a tensor along a specified dimension using a binary function.
+
+        Args:
+            fn (Callable[[float, float], float]): The binary reduction function.
+            start (float): The initial value for the reduction.
+
+        Returns:
+            Callable: A callable that reduces a tensor along a dimension.
+        """
         f = tensor_reduce(njit()(fn))
 
         def ret(a: Tensor, dim: int) -> Tensor:
             out_shape = list(a.shape)
             out_shape[dim] = 1
-
-            # Other values when not sum.
             out = a.zeros(tuple(out_shape))
             out._tensor._storage[:] = start
-
             f(*out.tuple(), *a.tuple(), dim)
             return out
 
@@ -83,29 +104,15 @@ class FastOps(TensorOps):
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
         """
-        Batched tensor matrix multiply ::
-
-            for n:
-              for i:
-                for j:
-                  for k:
-                    out[n, i, j] += a[n, i, k] * b[n, k, j]
-
-        Where n indicates an optional broadcasted batched dimension.
-
-        Should work for tensor shapes of 3 dims ::
-
-            assert a.shape[-1] == b.shape[-2]
+        Computes the batched tensor matrix multiplication.
 
         Args:
-            a : tensor data a
-            b : tensor data b
+            a (Tensor): The first tensor.
+            b (Tensor): The second tensor.
 
         Returns:
-            New tensor data
+            Tensor: The result of the matrix multiplication.
         """
-
-        # Make these always be a 3 dimensional multiply
         both_2d = 0
         if len(a.shape) == 2:
             a = a.contiguous().view(1, a.shape[0], a.shape[1])
@@ -123,7 +130,6 @@ class FastOps(TensorOps):
 
         tensor_matrix_multiply(*out.tuple(), *a.tuple(), *b.tuple())
 
-        # Undo 3d if we added it.
         if both_2d:
             out = out.view(out.shape[1], out.shape[2])
         return out
@@ -135,6 +141,17 @@ class FastOps(TensorOps):
 def tensor_map(
     fn: Callable[[float], float]
 ) -> Callable[[Storage, Shape, Strides, Storage, Shape, Strides], None]:
+    """
+    NUMBA higher-order tensor map function.
+
+    Applies a function element-wise to a tensor and stores the result in an output tensor.
+
+    Args:
+        fn (Callable[[float], float]): The function to apply.
+
+    Returns:
+        Callable: A callable that applies the map function to tensors.
+    """
     def _map(
         out: Storage,
         out_shape: Shape,
@@ -158,29 +175,22 @@ def tensor_map(
     return njit(parallel=True)(_map)
 
 
-
 def tensor_zip(
     fn: Callable[[float, float], float]
 ) -> Callable[
     [Storage, Shape, Strides, Storage, Shape, Strides, Storage, Shape, Strides], None
 ]:
     """
-    NUMBA higher-order tensor zip function. See `tensor_ops.py` for description.
+    NUMBA higher-order tensor zip function.
 
-
-    Optimizations:
-
-    * Main loop in parallel
-    * All indices use numpy buffers
-    * When `out`, `a`, `b` are stride-aligned, avoid indexing
+    Applies a binary function element-wise to two tensors and stores the result in an output tensor.
 
     Args:
-        fn: function maps two floats to float to apply.
+        fn (Callable[[float, float], float]): The binary function to apply.
 
     Returns:
-        Tensor zip function.
+        Callable: A callable that applies the zip function to tensors.
     """
-
     def _zip(
         out: Storage,
         out_shape: Shape,
@@ -192,7 +202,6 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 3.1.
         if list(a_strides) == list(b_strides) == list(out_strides) and list(
             a_shape
         ) == list(b_shape) == list(out_shape):
@@ -210,30 +219,24 @@ def tensor_zip(
                 b_data = b_storage[index_to_position(b_index, b_strides)]
                 map_data = fn(a_data, b_data)
                 out[index_to_position(o_index, out_strides)] = map_data
-        # raise NotImplementedError("Need to implement for Task 3.1")
 
-    return njit(parallel=True)(_zip)  # type: ignore
+    return njit(parallel=True)(_zip)
 
 
 def tensor_reduce(
     fn: Callable[[float, float], float]
 ) -> Callable[[Storage, Shape, Strides, Storage, Shape, Strides, int], None]:
     """
-    NUMBA higher-order tensor reduce function. See `tensor_ops.py` for description.
+    NUMBA higher-order tensor reduce function.
 
-    Optimizations:
-
-    * Main loop in parallel
-    * All indices use numpy buffers
-    * Inner-loop should not call any functions or write non-local variables
+    Reduces a tensor along a specified dimension using a binary function.
 
     Args:
-        fn: reduction function mapping two floats to float.
+        fn (Callable[[float, float], float]): The binary reduction function.
 
     Returns:
-        Tensor reduce function
+        Callable: A callable that reduces a tensor along a dimension.
     """
-
     def _reduce(
         out: Storage,
         out_shape: Shape,
@@ -243,7 +246,6 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # TODO: Implement for Task 3.1.
         reduce_size = a_shape[reduce_dim]
         for i in prange(len(out)):
             out_index = np.zeros(MAX_DIMS, np.int32)
@@ -273,32 +275,18 @@ def _tensor_matrix_multiply(
     """
     NUMBA tensor matrix multiply function.
 
-    Should work for any tensor shapes that broadcast as long as
-
-    ```
-    assert a_shape[-1] == b_shape[-2]
-    ```
-
-    Optimizations:
-
-    * Outer loop in parallel
-    * No index buffers or function calls
-    * Inner loop should have no global writes, 1 multiply.
-
+    Multiplies two matrices or tensors along their last two dimensions.
 
     Args:
-        out (Storage): storage for `out` tensor
-        out_shape (Shape): shape for `out` tensor
-        out_strides (Strides): strides for `out` tensor
-        a_storage (Storage): storage for `a` tensor
-        a_shape (Shape): shape for `a` tensor
-        a_strides (Strides): strides for `a` tensor
-        b_storage (Storage): storage for `b` tensor
-        b_shape (Shape): shape for `b` tensor
-        b_strides (Strides): strides for `b` tensor
-
-    Returns:
-        None : Fills in `out`
+        out (Storage): Storage for the output tensor.
+        out_shape (Shape): Shape of the output tensor.
+        out_strides (Strides): Strides of the output tensor.
+        a_storage (Storage): Storage for tensor A.
+        a_shape (Shape): Shape of tensor A.
+        a_strides (Strides): Strides of tensor A.
+        b_storage (Storage): Storage for tensor B.
+        b_shape (Shape): Shape of tensor B.
+        b_strides (Strides): Strides of tensor B.
     """
     assert a_shape[-1] == b_shape[-2]
     stride_batch_a = a_strides[0] if a_shape[0] > 1 else 0
@@ -308,15 +296,14 @@ def _tensor_matrix_multiply(
     stride_col_b = b_strides[1]
     sum_limit = a_shape[-1]
 
-    # Main computation loops
-    for idx in prange(0, out_shape[0]):  # Parallel loop for outer dimension
-        for row in range(0, out_shape[1]):
-            for col in range(0, out_shape[2]):
+    for idx in prange(out_shape[0]):
+        for row in range(out_shape[1]):
+            for col in range(out_shape[2]):
                 sum_temp = 0.0
                 a_index = idx * stride_batch_a + row * a_strides[1]
                 b_index = idx * stride_batch_b + col * b_strides[2]
 
-                for _ in range(0, sum_limit):
+                for _ in range(sum_limit):
                     sum_temp += a_storage[a_index] * b_storage[b_index]
                     a_index += stride_row_a
                     b_index += stride_col_b
