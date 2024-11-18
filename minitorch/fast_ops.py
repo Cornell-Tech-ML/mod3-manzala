@@ -218,6 +218,22 @@ def tensor_zip(
 def tensor_reduce(
     fn: Callable[[float, float], float]
 ) -> Callable[[Storage, Shape, Strides, Storage, Shape, Strides, int], None]:
+    """
+    NUMBA higher-order tensor reduce function. See `tensor_ops.py` for description.
+
+    Optimizations:
+
+    * Main loop in parallel
+    * All indices use numpy buffers
+    * Inner-loop should not call any functions or write non-local variables
+
+    Args:
+        fn: reduction function mapping two floats to float.
+
+    Returns:
+        Tensor reduce function
+    """
+
     def _reduce(
         out: Storage,
         out_shape: Shape,
@@ -227,6 +243,7 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
+        # TODO: Implement for Task 3.1.
         reduce_size = a_shape[reduce_dim]
         for i in prange(len(out)):
             out_index = np.zeros(MAX_DIMS, np.int32)

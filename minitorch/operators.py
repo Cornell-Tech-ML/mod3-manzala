@@ -5,7 +5,6 @@ from typing import Callable, Iterable
 import numpy as np  # Add this line to import NumPy
 
 
-
 # Mathematical functions:
 def mul(x: float, y: float) -> float:
     """Multiplies two numbers."""
