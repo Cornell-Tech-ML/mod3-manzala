@@ -145,13 +145,13 @@ class CudaOps(TensorOps):
 
             threadsperblock = 1024
             blockspergrid = out_a.size
-            f[blockspergrid, threadsperblock](
-                *out_a.tuple(), out_a.size, *a.tuple(), dim, start  # Fixed `out` -> `out_a`
+            f[blockspergrid, threadsperblock](  # type: ignore
+                *out_a.tuple(), out_a.size, *a.tuple(), dim, start
             )
+
             return out_a
 
         return ret
-
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
