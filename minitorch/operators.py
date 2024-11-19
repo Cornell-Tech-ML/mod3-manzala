@@ -55,6 +55,7 @@ def relu(x: float) -> float:
     """Applies the ReLU activation function."""
     return np.maximum(0, x)
 
+
 def log(x: float) -> float:
     """Calculates the natural logarithm."""
     return math.log(x)
