@@ -250,7 +250,6 @@ def tensor_reduce(
 
     """
 
-    @njit(parallel=True)
     def _reduce(
         out: Storage,
         out_shape: Shape,
@@ -272,7 +271,7 @@ def tensor_reduce(
                 acc = fn(acc, a_storage[a_pos])
             out[o_pos] = acc
 
-    return _reduce
+    return njit(parallel=True)(_reduce)
 
 
 @njit(parallel=True)
