@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Optional, Type
+from typing import TYPE_CHECKING, Callable, Optional, Type
 
 import numpy as np
 from typing_extensions import Protocol
 
 from . import operators
 from .tensor_data import (
-    # MAX_DIMS,
     broadcast_index,
     index_to_position,
     shape_broadcast,
@@ -20,13 +19,8 @@ if TYPE_CHECKING:
 
 
 class MapProto(Protocol):
-    """Protocol for mapping operations on tensors.
-
-    This protocol defines the interface for mapping operations on tensors. It specifies that the operation should take a tensor `x` and an optional tensor `out` as arguments, and return a tensor. The `/` in the parameter list indicates that all arguments must be specified positionally.
-    """
-
     def __call__(self, x: Tensor, out: Optional[Tensor] = ..., /) -> Tensor:
-        """Placeholder"""
+        """Call a map function"""
         ...
 
 
@@ -37,12 +31,9 @@ class TensorOps:
         ...
 
     @staticmethod
-    def cmap(fn: Callable[[float], float]) -> Callable[[Tensor, Tensor], Tensor]:
-        """Cmap placeholder"""
-        ...
-
-    @staticmethod
-    def zip(fn: Callable[[float, float], float]) -> Callable[[Tensor, Tensor], Tensor]:
+    def zip(
+        fn: Callable[[float, float], float],
+    ) -> Callable[[Tensor, Tensor], Tensor]:
         """Zip placeholder"""
         ...
 
@@ -55,7 +46,7 @@ class TensorOps:
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
-        """Matrix multiple placeholder"""
+        """Matrix multiply"""
         raise NotImplementedError("Not implemented in this assignment")
 
     cuda = False
@@ -71,7 +62,8 @@ class TensorBackend:
             ops : tensor operations object see `tensor_ops.py`
 
 
-        Returns :
+        Returns:
+        -------
             A collection of tensor functions
 
         """
@@ -82,7 +74,6 @@ class TensorBackend:
         self.log_map = ops.map(operators.log)
         self.exp_map = ops.map(operators.exp)
         self.id_map = ops.map(operators.id)
-        self.id_cmap = ops.cmap(operators.id)
         self.inv_map = ops.map(operators.inv)
 
         # Zips
@@ -211,9 +202,9 @@ class SimpleOps(TensorOps):
         Args:
         ----
             fn: function from two floats-to-float to apply
-            start (float): starting value for the reduction
             a (:class:`TensorData`): tensor to reduce over
             dim (int): int of dim to reduce
+            start (float): starting value
 
         Returns:
         -------
@@ -237,7 +228,7 @@ class SimpleOps(TensorOps):
 
     @staticmethod
     def matrix_multiply(a: "Tensor", b: "Tensor") -> "Tensor":
-        """Matrix multiply placeholder"""
+        """Matrix multiplication"""
         raise NotImplementedError("Not implemented in this assignment")
 
     is_cuda = False
@@ -246,7 +237,9 @@ class SimpleOps(TensorOps):
 # Implementations.
 
 
-def tensor_map(fn: Callable[[float], float]) -> Any:
+def tensor_map(
+    fn: Callable[[float], float],
+) -> Callable[[Storage, Shape, Strides, Storage, Shape, Strides], None]:
     """Low-level implementation of tensor map between
     tensors with *possibly different strides*.
 
@@ -265,16 +258,10 @@ def tensor_map(fn: Callable[[float], float]) -> Any:
     Args:
     ----
         fn: function from float-to-float to apply
-        out (array): storage for out tensor
-        out_shape (array): shape for out tensor
-        out_strides (array): strides for out tensor
-        in_storage (array): storage for in tensor
-        in_shape (array): shape for in tensor
-        in_strides (array): strides for in tensor
 
     Returns:
     -------
-        None : Fills in `out`
+        Tensor map function.
 
     """
 
@@ -286,21 +273,25 @@ def tensor_map(fn: Callable[[float], float]) -> Any:
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        out_index = np.array(out_shape)
-        in_index = np.array(in_shape)
+        in_index = np.zeros(len(in_shape), dtype=int)
+        out_index = np.zeros(len(out_shape), dtype=int)
+
         for i in range(len(out)):
             to_index(i, out_shape, out_index)
             broadcast_index(out_index, out_shape, in_shape, in_index)
-            data = in_storage[index_to_position(in_index, in_strides)]
-            map_data = fn(data)
-            out[index_to_position(out_index, out_strides)] = map_data
+
+            x = in_storage[index_to_position(in_index, in_strides)]
+            index = index_to_position(out_index, out_strides)
+            out[index] = fn(x)
 
     return _map
-    # raise NotImplementedError("Need to implement for Task 2.3")
 
 
-def tensor_zip(fn: Callable[[float, float], float]) -> Any:
+def tensor_zip(
+    fn: Callable[[float, float], float],
+) -> Callable[
+    [Storage, Shape, Strides, Storage, Shape, Strides, Storage, Shape, Strides], None
+]:
     """Low-level implementation of tensor zip between
     tensors with *possibly different strides*.
 
@@ -319,19 +310,10 @@ def tensor_zip(fn: Callable[[float, float], float]) -> Any:
     Args:
     ----
         fn: function mapping two floats to float to apply
-        out (array): storage for `out` tensor
-        out_shape (array): shape for `out` tensor
-        out_strides (array): strides for `out` tensor
-        a_storage (array): storage for `a` tensor
-        a_shape (array): shape for `a` tensor
-        a_strides (array): strides for `a` tensor
-        b_storage (array): storage for `b` tensor
-        b_shape (array): shape for `b` tensor
-        b_strides (array): strides for `b` tensor
 
     Returns:
     -------
-        None : Fills in `out`
+        Tensor zip function.
 
     """
 
@@ -346,24 +328,26 @@ def tensor_zip(fn: Callable[[float, float], float]) -> Any:
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        out_index = np.array(out_shape)
-        a_index = np.array(a_shape)
-        b_index = np.array(b_shape)
+        out_index = np.zeros(len(out_shape), dtype=int)
+        a_in = np.zeros(len(a_shape), dtype=int)
+        b_in = np.zeros(len(b_shape), dtype=int)
+
         for i in range(len(out)):
             to_index(i, out_shape, out_index)
-            broadcast_index(out_index, out_shape, a_shape, a_index)
-            broadcast_index(out_index, out_shape, b_shape, b_index)
-            a_data = a_storage[index_to_position(a_index, a_strides)]
-            b_data = b_storage[index_to_position(b_index, b_strides)]
-            zip_data = fn(a_data, b_data)
-            out[index_to_position(out_index, out_strides)] = zip_data
-        # raise NotImplementedError("Need to implement for Task 2.3")
+            index = index_to_position(out_index, out_strides)
+            broadcast_index(out_index, out_shape, a_shape, a_in)
+            a = a_storage[index_to_position(a_in, a_strides)]
+            broadcast_index(out_index, out_shape, b_shape, b_in)
+            b = b_storage[index_to_position(b_in, b_strides)]
+
+            out[index] = fn(a, b)
 
     return _zip
 
 
-def tensor_reduce(fn: Callable[[float, float], float]) -> Any:
+def tensor_reduce(
+    fn: Callable[[float, float], float],
+) -> Callable[[Storage, Shape, Strides, Storage, Shape, Strides, int], None]:
     """Low-level implementation of tensor reduce.
 
     * `out_shape` will be the same as `a_shape`
@@ -372,17 +356,10 @@ def tensor_reduce(fn: Callable[[float, float], float]) -> Any:
     Args:
     ----
         fn: reduction function mapping two floats to float
-        out (array): storage for `out` tensor
-        out_shape (array): shape for `out` tensor
-        out_strides (array): strides for `out` tensor
-        a_storage (array): storage for `a` tensor
-        a_shape (array): shape for `a` tensor
-        a_strides (array): strides for `a` tensor
-        reduce_dim (int): dimension to reduce out
 
     Returns:
     -------
-        None : Fills in `out`
+        Tensor reduce function.
 
     """
 
@@ -395,15 +372,18 @@ def tensor_reduce(fn: Callable[[float, float], float]) -> Any:
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        out_index = np.array(out_shape)
+        out_index = np.zeros(len(a_shape), dtype=int)
         for i in range(len(out)):
             to_index(i, out_shape, out_index)
+            index = index_to_position(out_index, out_strides)
+
             for j in range(a_shape[reduce_dim]):
-                out_index[reduce_dim] = j
-                a_data = a_storage[index_to_position(out_index, a_strides)]
-                out[i] = fn(out[i], a_data)
-        # raise NotImplementedError("Need to implement for Task 2.3")
+                a_index = out_index.copy()
+                a_index[reduce_dim] = j
+
+                out[index] = fn(
+                    a_storage[index_to_position(a_index, a_strides)], out[index]
+                )
 
     return _reduce
 
