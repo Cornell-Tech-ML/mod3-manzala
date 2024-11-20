@@ -45,24 +45,31 @@ The following table describes the files located in the `results` directory:
 | `simple_log_gpu.txt`      | Log file for basic operations executed on the GPU.                         | `minitorch/results/simple_log_gpu.txt`                                                          |
 | `xor_log_cpu.txt`         | Log file for XOR operations executed on the CPU.                           | `minitorch/results/xor_log_cpu.txt`                                                             |
 | `xor_log_gpu.txt`         | Log file for XOR operations executed on the GPU.                           | `minitorch/results/xor_log_gpu.txt`                                                             |
-| `split_log_gpu.txt`       | Log file for split operations executed on the GPU.                         | `minitorch/results/split_log_gpu.txt`                                                           |                                                  |
+| `split_log_gpu.txt`       | Log file for split operations executed on the GPU.                         | `minitorch/results/split_log_gpu.txt`                                                           |
 | `big_simple_log_cpu.txt`  | Log file for large-scale simple operations executed on the CPU.             | `minitorch/results/big_simple_log_cpu.txt`                                                      |
 | `big_simple_log_gpu.txt`  | Log file for large-scale simple operations executed on the GPU.             | `minitorch/results/big_simple_log_gpu.txt`                                                      |
 | `matmul_result.png`       | Visualization of the matrix multiplication result.                         | `minitorch/results/matmul_result.png`                                                           |
+| `parallel_check.txt`      | Log file for checking parallel execution in computations.                  | `minitorch/results/parallel_check.txt`                                                          |
+| `timing_output.png`       | Visualization of the timing results for various operations.                | `minitorch/results/timing_output.png`                                                           |
 
 ---
 
-### Visualization
+### Visualizations
 
 #### Matrix Multiplication Result
 Below is the visualization for matrix multiplication:
 
 ![Matrix Multiplication Result](minitorch/results/matmul_result.png)
 
+#### Timing Output
+Below is the visualization of the timing results:
+
+![Timing Output](minitorch/results/timing_output.png)
+
 ---
 
 ### Notes
 
 - The log files help analyze performance on CPU and GPU for various operations.
-- The `matmul_result.png` provides a visual representation of the results from matrix multiplication.
+- The visualizations provide insights into the results and timings of computations.
 - These files are generated as part of the MiniTorch computations.
