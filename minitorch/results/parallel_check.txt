@@ -1,39 +1,39 @@
 MAP
- 
+
 ================================================================================
- Parallel Accelerator Optimizing:  Function tensor_map.<locals>._map, 
-/content/mod3-manzala/minitorch/fast_ops.py (175)  
+ Parallel Accelerator Optimizing:  Function tensor_map.<locals>._map,
+/content/mod3-manzala/minitorch/fast_ops.py (175)
 ================================================================================
 
 
-Parallel loop listing for  Function tensor_map.<locals>._map, /content/mod3-manzala/minitorch/fast_ops.py (175) 
+Parallel loop listing for  Function tensor_map.<locals>._map, /content/mod3-manzala/minitorch/fast_ops.py (175)
 ----------------------------------------------------------------------|loop #ID
-    def _map(                                                         | 
-        out: Storage,                                                 | 
-        out_shape: Shape,                                             | 
-        out_strides: Strides,                                         | 
-        in_storage: Storage,                                          | 
-        in_shape: Shape,                                              | 
-        in_strides: Strides,                                          | 
-    ) -> None:                                                        | 
-        if np.array_equal(out_shape, in_shape) and np.array_equal(    | 
-            out_strides, in_strides                                   | 
-        ):                                                            | 
+    def _map(                                                         |
+        out: Storage,                                                 |
+        out_shape: Shape,                                             |
+        out_strides: Strides,                                         |
+        in_storage: Storage,                                          |
+        in_shape: Shape,                                              |
+        in_strides: Strides,                                          |
+    ) -> None:                                                        |
+        if np.array_equal(out_shape, in_shape) and np.array_equal(    |
+            out_strides, in_strides                                   |
+        ):                                                            |
             for i in prange(len(out)):--------------------------------| #2
-                out[i] = fn(in_storage[i])                            | 
-            return                                                    | 
-                                                                      | 
+                out[i] = fn(in_storage[i])                            |
+            return                                                    |
+                                                                      |
         for j in prange(len(out)):------------------------------------| #3
             out_idx = np.zeros(MAX_DIMS, np.int32)--------------------| #0
             in_idx = np.zeros(MAX_DIMS, np.int32)---------------------| #1
-            to_index(j, out_shape, out_idx)                           | 
-            broadcast_index(out_idx, out_shape, in_shape, in_idx)     | 
-            out_ord = index_to_position(out_idx, out_strides)         | 
-            in_ord = index_to_position(in_idx, in_strides)            | 
-            out[out_ord] = fn(in_storage[in_ord])                     | 
+            to_index(j, out_shape, out_idx)                           |
+            broadcast_index(out_idx, out_shape, in_shape, in_idx)     |
+            out_ord = index_to_position(out_idx, out_strides)         |
+            in_ord = index_to_position(in_idx, in_strides)            |
+            out[out_ord] = fn(in_storage[in_ord])                     |
 --------------------------------- Fusing loops ---------------------------------
 Attempting fusion of parallel loops (combines loops with similar properties)...
- 
+
 Fused loop summary:
 +--0 has the following loops fused into it:
    +--1 (fused)
@@ -42,7 +42,7 @@ loop(s) (originating from loops labelled: #2, #3, #0).
 --------------------------------------------------------------------------------
 ---------------------------- Optimising loop nests -----------------------------
 Attempting loop nest rewrites (optimising for the largest parallel loops)...
- 
+
 +--3 is a parallel loop
    +--0 --> rewritten as a serial loop
 --------------------------------------------------------------------------------
@@ -60,73 +60,73 @@ Parallel region 0:
    +--0 (serial, fused with loop(s): 1)
 
 
- 
+
 Parallel region 0 (loop #3) had 1 loop(s) fused and 1 loop(s) serialized as part
  of the larger parallel loop (#3).
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
- 
+
 ---------------------------Loop invariant code motion---------------------------
 Allocation hoisting:
-The memory allocation derived from the instruction at 
+The memory allocation derived from the instruction at
 /content/mod3-manzala/minitorch/fast_ops.py (191) is hoisted out of the parallel
- loop labelled #3 (it will be performed before the loop is executed and reused 
+ loop labelled #3 (it will be performed before the loop is executed and reused
 inside the loop):
    Allocation:: out_idx = np.zeros(MAX_DIMS, np.int32)
     - numpy.empty() is used for the allocation.
-The memory allocation derived from the instruction at 
+The memory allocation derived from the instruction at
 /content/mod3-manzala/minitorch/fast_ops.py (192) is hoisted out of the parallel
- loop labelled #3 (it will be performed before the loop is executed and reused 
+ loop labelled #3 (it will be performed before the loop is executed and reused
 inside the loop):
    Allocation:: in_idx = np.zeros(MAX_DIMS, np.int32)
     - numpy.empty() is used for the allocation.
 None
 ZIP
- 
+
 ================================================================================
- Parallel Accelerator Optimizing:  Function tensor_zip.<locals>._zip, 
-/content/mod3-manzala/minitorch/fast_ops.py (225)  
+ Parallel Accelerator Optimizing:  Function tensor_zip.<locals>._zip,
+/content/mod3-manzala/minitorch/fast_ops.py (225)
 ================================================================================
 
 
-Parallel loop listing for  Function tensor_zip.<locals>._zip, /content/mod3-manzala/minitorch/fast_ops.py (225) 
+Parallel loop listing for  Function tensor_zip.<locals>._zip, /content/mod3-manzala/minitorch/fast_ops.py (225)
 ------------------------------------------------------------------------------------|loop #ID
-    def _zip(                                                                       | 
-        out: Storage,                                                               | 
-        out_shape: Shape,                                                           | 
-        out_strides: Strides,                                                       | 
-        a_storage: Storage,                                                         | 
-        a_shape: Shape,                                                             | 
-        a_strides: Strides,                                                         | 
-        b_storage: Storage,                                                         | 
-        b_shape: Shape,                                                             | 
-        b_strides: Strides,                                                         | 
-    ) -> None:                                                                      | 
-        # Check if stride-alligned (same shape and strides, mean memory is same)    | 
-        if (                                                                        | 
-            np.array_equal(out_shape, a_shape)                                      | 
-            and np.array_equal(out_shape, b_shape)                                  | 
-            and np.array_equal(out_strides, a_strides)                              | 
-            and np.array_equal(out_strides, b_strides)                              | 
-        ):                                                                          | 
+    def _zip(                                                                       |
+        out: Storage,                                                               |
+        out_shape: Shape,                                                           |
+        out_strides: Strides,                                                       |
+        a_storage: Storage,                                                         |
+        a_shape: Shape,                                                             |
+        a_strides: Strides,                                                         |
+        b_storage: Storage,                                                         |
+        b_shape: Shape,                                                             |
+        b_strides: Strides,                                                         |
+    ) -> None:                                                                      |
+        # Check if stride-alligned (same shape and strides, mean memory is same)    |
+        if (                                                                        |
+            np.array_equal(out_shape, a_shape)                                      |
+            and np.array_equal(out_shape, b_shape)                                  |
+            and np.array_equal(out_strides, a_strides)                              |
+            and np.array_equal(out_strides, b_strides)                              |
+        ):                                                                          |
             for out_ord in prange(len(out)):----------------------------------------| #7
-                out[out_ord] = fn(a_storage[out_ord], b_storage[out_ord])           | 
-            return                                                                  | 
-                                                                                    | 
+                out[out_ord] = fn(a_storage[out_ord], b_storage[out_ord])           |
+            return                                                                  |
+                                                                                    |
         for i in prange(len(out)):--------------------------------------------------| #8
             a_idx = np.zeros(MAX_DIMS, np.int32)------------------------------------| #4
             b_idx = np.zeros(MAX_DIMS, np.int32)------------------------------------| #5
             out_idx = np.zeros(MAX_DIMS, np.int32)----------------------------------| #6
-            to_index(i, out_shape, out_idx)                                         | 
-            broadcast_index(out_idx, out_shape, a_shape, a_idx)                     | 
-            broadcast_index(out_idx, out_shape, b_shape, b_idx)                     | 
-            a_ord = index_to_position(a_idx, a_strides)                             | 
-            b_ord = index_to_position(b_idx, b_strides)                             | 
-            out_ord = index_to_position(out_idx, out_strides)                       | 
-            out[out_ord] = fn(a_storage[a_ord], b_storage[b_ord])                   | 
+            to_index(i, out_shape, out_idx)                                         |
+            broadcast_index(out_idx, out_shape, a_shape, a_idx)                     |
+            broadcast_index(out_idx, out_shape, b_shape, b_idx)                     |
+            a_ord = index_to_position(a_idx, a_strides)                             |
+            b_ord = index_to_position(b_idx, b_strides)                             |
+            out_ord = index_to_position(out_idx, out_strides)                       |
+            out[out_ord] = fn(a_storage[a_ord], b_storage[b_ord])                   |
 --------------------------------- Fusing loops ---------------------------------
 Attempting fusion of parallel loops (combines loops with similar properties)...
- 
+
 Fused loop summary:
 +--4 has the following loops fused into it:
    +--5 (fused)
@@ -136,7 +136,7 @@ loop(s) (originating from loops labelled: #7, #8, #4).
 --------------------------------------------------------------------------------
 ---------------------------- Optimising loop nests -----------------------------
 Attempting loop nest rewrites (optimising for the largest parallel loops)...
- 
+
 +--8 is a parallel loop
    +--4 --> rewritten as a serial loop
 --------------------------------------------------------------------------------
@@ -155,70 +155,70 @@ Parallel region 0:
    +--4 (serial, fused with loop(s): 5, 6)
 
 
- 
+
 Parallel region 0 (loop #8) had 2 loop(s) fused and 1 loop(s) serialized as part
  of the larger parallel loop (#8).
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
- 
+
 ---------------------------Loop invariant code motion---------------------------
 Allocation hoisting:
-The memory allocation derived from the instruction at 
+The memory allocation derived from the instruction at
 /content/mod3-manzala/minitorch/fast_ops.py (248) is hoisted out of the parallel
- loop labelled #8 (it will be performed before the loop is executed and reused 
+ loop labelled #8 (it will be performed before the loop is executed and reused
 inside the loop):
    Allocation:: a_idx = np.zeros(MAX_DIMS, np.int32)
     - numpy.empty() is used for the allocation.
-The memory allocation derived from the instruction at 
+The memory allocation derived from the instruction at
 /content/mod3-manzala/minitorch/fast_ops.py (249) is hoisted out of the parallel
- loop labelled #8 (it will be performed before the loop is executed and reused 
+ loop labelled #8 (it will be performed before the loop is executed and reused
 inside the loop):
    Allocation:: b_idx = np.zeros(MAX_DIMS, np.int32)
     - numpy.empty() is used for the allocation.
-The memory allocation derived from the instruction at 
+The memory allocation derived from the instruction at
 /content/mod3-manzala/minitorch/fast_ops.py (250) is hoisted out of the parallel
- loop labelled #8 (it will be performed before the loop is executed and reused 
+ loop labelled #8 (it will be performed before the loop is executed and reused
 inside the loop):
    Allocation:: out_idx = np.zeros(MAX_DIMS, np.int32)
     - numpy.empty() is used for the allocation.
 None
 REDUCE
- 
+
 ================================================================================
- Parallel Accelerator Optimizing:  Function tensor_reduce.<locals>._reduce, 
-/content/mod3-manzala/minitorch/fast_ops.py (283)  
+ Parallel Accelerator Optimizing:  Function tensor_reduce.<locals>._reduce,
+/content/mod3-manzala/minitorch/fast_ops.py (283)
 ================================================================================
 
 
-Parallel loop listing for  Function tensor_reduce.<locals>._reduce, /content/mod3-manzala/minitorch/fast_ops.py (283) 
+Parallel loop listing for  Function tensor_reduce.<locals>._reduce, /content/mod3-manzala/minitorch/fast_ops.py (283)
 --------------------------------------------------------------------|loop #ID
-    def _reduce(                                                    | 
-        out: Storage,                                               | 
-        out_shape: Shape,                                           | 
-        out_strides: Strides,                                       | 
-        a_storage: Storage,                                         | 
-        a_shape: Shape,                                             | 
-        a_strides: Strides,                                         | 
-        reduce_dim: int,                                            | 
-    ) -> None:                                                      | 
+    def _reduce(                                                    |
+        out: Storage,                                               |
+        out_shape: Shape,                                           |
+        out_strides: Strides,                                       |
+        a_storage: Storage,                                         |
+        a_shape: Shape,                                             |
+        a_strides: Strides,                                         |
+        reduce_dim: int,                                            |
+    ) -> None:                                                      |
         for i in prange(len(out)):----------------------------------| #10
             out_idx = np.zeros(MAX_DIMS, np.int32)------------------| #9
-            to_index(i, out_shape, out_idx)                         | 
-            out_ord = 0                                             | 
-            for d in range(len(out_shape)):                         | 
-                out_ord += out_idx[d] * out_strides[d]              | 
-                                                                    | 
-            curr_val = out[out_ord]                                 | 
-            base_a_ord = 0                                          | 
-            for d in range(len(a_shape)):                           | 
-                if d != reduce_dim:                                 | 
-                    base_a_ord += out_idx[d] * a_strides[d]         | 
-                                                                    | 
-            for j in range(a_shape[reduce_dim]):                    | 
-                a_ord = base_a_ord + j * a_strides[reduce_dim]      | 
-                curr_val = fn(curr_val, float(a_storage[a_ord]))    | 
-                                                                    | 
-            out[out_ord] = curr_val                                 | 
+            to_index(i, out_shape, out_idx)                         |
+            out_ord = 0                                             |
+            for d in range(len(out_shape)):                         |
+                out_ord += out_idx[d] * out_strides[d]              |
+                                                                    |
+            curr_val = out[out_ord]                                 |
+            base_a_ord = 0                                          |
+            for d in range(len(a_shape)):                           |
+                if d != reduce_dim:                                 |
+                    base_a_ord += out_idx[d] * a_strides[d]         |
+                                                                    |
+            for j in range(a_shape[reduce_dim]):                    |
+                a_ord = base_a_ord + j * a_strides[reduce_dim]      |
+                curr_val = fn(curr_val, float(a_storage[a_ord]))    |
+                                                                    |
+            out[out_ord] = curr_val                                 |
 --------------------------------- Fusing loops ---------------------------------
 Attempting fusion of parallel loops (combines loops with similar properties)...
 Following the attempted fusion of parallel for-loops there are 2 parallel for-
@@ -226,7 +226,7 @@ loop(s) (originating from loops labelled: #10, #9).
 --------------------------------------------------------------------------------
 ---------------------------- Optimising loop nests -----------------------------
 Attempting loop nest rewrites (optimising for the largest parallel loops)...
- 
+
 +--10 is a parallel loop
    +--9 --> rewritten as a serial loop
 --------------------------------------------------------------------------------
@@ -243,87 +243,87 @@ Parallel region 0:
    +--9 (serial)
 
 
- 
-Parallel region 0 (loop #10) had 0 loop(s) fused and 1 loop(s) serialized as 
+
+Parallel region 0 (loop #10) had 0 loop(s) fused and 1 loop(s) serialized as
 part of the larger parallel loop (#10).
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
- 
+
 ---------------------------Loop invariant code motion---------------------------
 Allocation hoisting:
-The memory allocation derived from the instruction at 
+The memory allocation derived from the instruction at
 /content/mod3-manzala/minitorch/fast_ops.py (293) is hoisted out of the parallel
- loop labelled #10 (it will be performed before the loop is executed and reused 
+ loop labelled #10 (it will be performed before the loop is executed and reused
 inside the loop):
    Allocation:: out_idx = np.zeros(MAX_DIMS, np.int32)
     - numpy.empty() is used for the allocation.
 None
 MATRIX MULTIPLY
- 
+
 ================================================================================
- Parallel Accelerator Optimizing:  Function _tensor_matrix_multiply, 
-/content/mod3-manzala/minitorch/fast_ops.py (314)  
+ Parallel Accelerator Optimizing:  Function _tensor_matrix_multiply,
+/content/mod3-manzala/minitorch/fast_ops.py (314)
 ================================================================================
 
 
-Parallel loop listing for  Function _tensor_matrix_multiply, /content/mod3-manzala/minitorch/fast_ops.py (314) 
+Parallel loop listing for  Function _tensor_matrix_multiply, /content/mod3-manzala/minitorch/fast_ops.py (314)
 --------------------------------------------------------------------------------------------|loop #ID
-def _tensor_matrix_multiply(                                                                | 
-    out: Storage,                                                                           | 
-    out_shape: Shape,                                                                       | 
-    out_strides: Strides,                                                                   | 
-    a_storage: Storage,                                                                     | 
-    a_shape: Shape,                                                                         | 
-    a_strides: Strides,                                                                     | 
-    b_storage: Storage,                                                                     | 
-    b_shape: Shape,                                                                         | 
-    b_strides: Strides,                                                                     | 
-) -> None:                                                                                  | 
-    """NUMBA tensor matrix multiply function.                                               | 
-                                                                                            | 
-    Should work for any tensor shapes that broadcast as long as                             | 
-                                                                                            | 
-    ```                                                                                     | 
-    assert a_shape[-1] == b_shape[-2]                                                       | 
-    ```                                                                                     | 
-                                                                                            | 
-    Optimizations:                                                                          | 
-                                                                                            | 
-    * Outer loop in parallel                                                                | 
-    * No index buffers or function calls                                                    | 
-    * Inner loop should have no global writes, 1 multiply.                                  | 
-                                                                                            | 
-                                                                                            | 
-    Args:                                                                                   | 
-    ----                                                                                    | 
-        out (Storage): storage for `out` tensor                                             | 
-        out_shape (Shape): shape for `out` tensor                                           | 
-        out_strides (Strides): strides for `out` tensor                                     | 
-        a_storage (Storage): storage for `a` tensor                                         | 
-        a_shape (Shape): shape for `a` tensor                                               | 
-        a_strides (Strides): strides for `a` tensor                                         | 
-        b_storage (Storage): storage for `b` tensor                                         | 
-        b_shape (Shape): shape for `b` tensor                                               | 
-        b_strides (Strides): strides for `b` tensor                                         | 
-                                                                                            | 
-    Returns:                                                                                | 
-    -------                                                                                 | 
-        None : Fills in `out`                                                               | 
-                                                                                            | 
-    """                                                                                     | 
-    a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0                                  | 
-    b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0                                  | 
-                                                                                            | 
+def _tensor_matrix_multiply(                                                                |
+    out: Storage,                                                                           |
+    out_shape: Shape,                                                                       |
+    out_strides: Strides,                                                                   |
+    a_storage: Storage,                                                                     |
+    a_shape: Shape,                                                                         |
+    a_strides: Strides,                                                                     |
+    b_storage: Storage,                                                                     |
+    b_shape: Shape,                                                                         |
+    b_strides: Strides,                                                                     |
+) -> None:                                                                                  |
+    """NUMBA tensor matrix multiply function.                                               |
+                                                                                            |
+    Should work for any tensor shapes that broadcast as long as                             |
+                                                                                            |
+    ```                                                                                     |
+    assert a_shape[-1] == b_shape[-2]                                                       |
+    ```                                                                                     |
+                                                                                            |
+    Optimizations:                                                                          |
+                                                                                            |
+    * Outer loop in parallel                                                                |
+    * No index buffers or function calls                                                    |
+    * Inner loop should have no global writes, 1 multiply.                                  |
+                                                                                            |
+                                                                                            |
+    Args:                                                                                   |
+    ----                                                                                    |
+        out (Storage): storage for `out` tensor                                             |
+        out_shape (Shape): shape for `out` tensor                                           |
+        out_strides (Strides): strides for `out` tensor                                     |
+        a_storage (Storage): storage for `a` tensor                                         |
+        a_shape (Shape): shape for `a` tensor                                               |
+        a_strides (Strides): strides for `a` tensor                                         |
+        b_storage (Storage): storage for `b` tensor                                         |
+        b_shape (Shape): shape for `b` tensor                                               |
+        b_strides (Strides): strides for `b` tensor                                         |
+                                                                                            |
+    Returns:                                                                                |
+    -------                                                                                 |
+        None : Fills in `out`                                                               |
+                                                                                            |
+    """                                                                                     |
+    a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0                                  |
+    b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0                                  |
+                                                                                            |
     for i in prange(out_shape[0]):----------------------------------------------------------| #13
         for j in prange(out_shape[-2]):-----------------------------------------------------| #12
             for k in prange(out_shape[-1]):-------------------------------------------------| #11
-                kl = 0                                                                      | 
-                for l in range(a_shape[-1]):                                                | 
-                    a_ord = a_batch_stride * i + a_strides[-2] * j + a_strides[-1] * l      | 
-                    b_ord = b_batch_stride * i + b_strides[-2] * l + b_strides[-1] * k      | 
-                    kl += a_storage[a_ord] * b_storage[b_ord]                               | 
-                out_ord = out_strides[0] * i + out_strides[-2] * j + out_strides[-1] * k    | 
-                out[out_ord] = kl                                                           | 
+                kl = 0                                                                      |
+                for l in range(a_shape[-1]):                                                |
+                    a_ord = a_batch_stride * i + a_strides[-2] * j + a_strides[-1] * l      |
+                    b_ord = b_batch_stride * i + b_strides[-2] * l + b_strides[-1] * k      |
+                    kl += a_storage[a_ord] * b_storage[b_ord]                               |
+                out_ord = out_strides[0] * i + out_strides[-2] * j + out_strides[-1] * k    |
+                out[out_ord] = kl                                                           |
 --------------------------------- Fusing loops ---------------------------------
 Attempting fusion of parallel loops (combines loops with similar properties)...
 Following the attempted fusion of parallel for-loops there are 2 parallel for-
@@ -331,7 +331,7 @@ loop(s) (originating from loops labelled: #13, #12).
 --------------------------------------------------------------------------------
 ---------------------------- Optimising loop nests -----------------------------
 Attempting loop nest rewrites (optimising for the largest parallel loops)...
- 
+
 +--13 is a parallel loop
    +--12 --> rewritten as a serial loop
       +--11 --> rewritten as a serial loop
@@ -351,12 +351,12 @@ Parallel region 0:
       +--11 (serial)
 
 
- 
-Parallel region 0 (loop #13) had 0 loop(s) fused and 2 loop(s) serialized as 
+
+Parallel region 0 (loop #13) had 0 loop(s) fused and 2 loop(s) serialized as
 part of the larger parallel loop (#13).
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
- 
+
 ---------------------------Loop invariant code motion---------------------------
 Allocation hoisting:
 No allocation hoisting found
